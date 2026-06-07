@@ -22,6 +22,10 @@ private:
         return seed_;
     }
 
+    std::uint64_t random_bounded(std::uint64_t upper_bound) noexcept {
+        return (next_random() >> 16) % upper_bound;
+    }
+
     std::uint64_t num_messages_;
     std::uint64_t seed_ = 12345ULL; // Fixed for reproducibility
     char symbol_[8];
