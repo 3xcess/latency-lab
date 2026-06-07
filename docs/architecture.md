@@ -240,7 +240,52 @@ Result: **~1 cache miss per message** instead of multiple misses if data were fr
 - Only accessed once per MODIFY/CANCEL/TRADE
 - Single lookup is still < 100 ns
 
-## Future Optimizations (Phase 2+)
+## Phase 2: Producer-Consumer Pipeline
+
+Phase 2 adds a second benchmark path that separates market data publishing from order book processing.
+
+```
+Market Data Generator
+        |
+        v
+Producer Thread
+        |
+        v
+Bounded Mutex Queue
+        |
+        v
+Consumer Thread
+        |
+        v
+Order Book Engine
+        |
+        v
+Latency Recorder
+```
+
+### New Components
+
+**BoundedMutexQueue**
+
+File: `include/latency_lab/mutex_queue.hpp`
+
+- Uses `std::mutex` and `std::condition_variable`
+- Applies backpressure when the queue reaches capacity
+- Provides the correctness baseline before lock-free experiments
+
+**Thread utilities**
+
+Files: `include/latency_lab/thread_utils.hpp`, `src/thread_utils.cpp`
+
+- `pin_thread_to_cpu(int cpu_id)` uses `pthread_setaffinity_np` on Linux
+- `get_current_cpu()` uses `sched_getcpu` on Linux
+- Non-Linux builds return `false` or `-1`, so the project remains portable
+
+### Benchmark Semantics
+
+The producer-consumer benchmark records latency from producer enqueue timestamp to completion of order book processing in the consumer. This intentionally includes queueing delay and scheduler wakeup overhead, unlike the single-thread benchmark, which isolates the order book processing path.
+
+## Future Optimizations (Phase 3+)
 
 - Lock-Free Queue
 - Object Pool
@@ -250,4 +295,4 @@ Result: **~1 cache miss per message** instead of multiple misses if data were fr
 
 ---
 
-**Status:** Phase 1 complete
+**Status:** Phase 2 complete
