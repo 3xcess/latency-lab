@@ -4,6 +4,7 @@
 #include <cstddef>
 #include <mutex>
 #include <queue>
+#include <utility>
 
 namespace latency_lab {
 
@@ -26,6 +27,23 @@ public:
         }
 
         queue_.push(item);
+        not_empty_.notify_one();
+    }
+
+    template <typename Mutator>
+    void push_with_mutation(const T& item, Mutator mutate) {
+        std::unique_lock<std::mutex> lock(mutex_);
+        not_full_.wait(lock, [this] {
+            return closed_ || queue_.size() < capacity_;
+        });
+
+        if (closed_) {
+            return;
+        }
+
+        T queued_item = item;
+        mutate(queued_item);
+        queue_.push(std::move(queued_item));
         not_empty_.notify_one();
     }
 
