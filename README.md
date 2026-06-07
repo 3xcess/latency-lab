@@ -71,6 +71,10 @@ Latency Recorder
    - Separates market data publishing from order book processing
    - Pins producer and consumer workers to different threads
 
+3. **producer-consumer Latency Recorder**
+   - separates pipeline latency, queue residence time, and book processing latency
+   - Results show that the additional latency comes primarily from queue residence time and thread handoff overhead
+
 ### Future Phases (Phase 3+)
 
 - **Lock-free SPSC ring buffer** queue implementation
