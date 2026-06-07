@@ -1,0 +1,122 @@
+-> What: Added threads and producer-consumer queue
+
+====================================================
+====================================================
+=== Single-Thread Order Book Benchmark ===
+Generating 1000000 messages...
+Generated 1000000 messages.
+Warm-up complete.
+
+=== Benchmark Results ===
+Total Messages: 1000000
+Total Time: 0.373671 seconds
+Throughput: 2.67615 M msg/sec
+
+=== Latency Statistics ===
+Samples: 1000000
+Min:     20 ns
+P50:     297 ns
+P90:     529 ns
+P99:     956 ns
+P99.9:   2.90 us
+Max:     288.32 us
+Mean:    347 ns
+========================
+
+=== Final Order Book State ===
+Total Orders in Book: 8516
+Buy Side Levels: 19000
+Sell Side Levels: 19000
+Best Bid: 28999 x 84858
+Best Ask: 10000 x 58313
+====================================================
+==========================
+====================================================
+=== Producer-Consumer Order Book Benchmark ===
+Messages: 1000000
+Queue Capacity: 65536
+Producer CPU: -1
+Consumer CPU: -1
+
+=== Benchmark Results ===
+Produced: 1000000
+Consumed: 1000000
+Total Time: 1.51487 seconds
+Throughput: 0.660121 M msg/sec
+Producer CPU Migrations: 1
+Consumer CPU Migrations: 0
+
+=== Pipeline Latency ===
+producer timestamp -> consumer finished processing
+
+=== Latency Statistics ===
+Samples: 1000000
+Min:     415.01 us
+P50:     99.58 ms
+P90:     115.49 ms
+P99:     138.49 ms
+P99.9:   140.61 ms
+Max:     140.82 ms
+Mean:    97.22 ms
+========================
+
+
+=== Queue Wait / Residence Time ===
+producer push timestamp -> consumer pop timestamp
+
+=== Latency Statistics ===
+Samples: 1000000
+Min:     33.92 us
+P50:     99.58 ms
+P90:     115.48 ms
+P99:     138.49 ms
+P99.9:   140.60 ms
+Max:     140.82 ms
+Mean:    97.21 ms
+========================
+
+
+=== Book Processing Latency ===
+before OrderBook::on_message() -> after OrderBook::on_message()
+
+=== Latency Statistics ===
+Samples: 1000000
+Min:     21 ns
+P50:     515 ns
+P90:     887 ns
+P99:     1.56 us
+P99.9:   8.22 us
+Max:     242.42 us
+Mean:    581 ns
+========================
+
+=== Final Order Book State ===
+Total Orders in Book: 8516
+Buy Side Levels: 19000
+Sell Side Levels: 19000
+Best Bid: 28999 x 84858
+====================================================
+====================================================
+
+>> producer-consumer version was measuring queue residence time / end-to-end pipeline latency, not just order-book processing latency.
+
+>> pipeline = producer timestamp → wait in queue → consumer pops → book update
+
+>> For a tiny per-message workload, the synchronization overhead can dominate the actual order-book work.
+|__>> For a tiny per-message workload, the synchronization overhead can dominate the actual order-book work.
+|__>> Adding threads does not automatically improve performance. For small hot-path messages, thread handoff can cost more than the work itself.
+
+>> Added a producer-consumer pipeline and initially observed much worse latency than the single-thread baseline. 
+|__>> Analyzing the measurement, the producer-consumer latency represents queue residence time and thread handoff delay. 
+|__>> Adding threads was actually reducing performance.
+
+>> Updated benchmark_producer_consumer to separate pipeline latency, queue residence time, and book processing latency.
+|__>> Results show that producer-consumer slowdown is almost entirely queue residence time, not order book processing time.
+|__>> synchronization and queueing dominate latency measurement when per message work is small
+
+|Benchmark	                   |Throughput	 |  Pipeline p50 |	Queue p50 |	Book p50 |   Book p99 |
+|==============================|=============|===============|============|==========|============|
+|Single-thread	               |2.68 M msg/s |	N/A	         |   N/A	  |  297 ns	 |   956 ns   |
+|Producer-consumer mutex queue |0.66 M msg/s |	99.58 ms	 |  99.58 ms  |	515 ns	 |   1.56 us  |
+
+->The book update path remains fast, but the mutex-based producer-consumer pipeline introduces significant queueing delay under an unpaced stress workload.
