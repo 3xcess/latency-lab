@@ -1,13 +1,15 @@
 #include "latency_lab/generator.hpp"
-#include <cstring>
 #include <algorithm>
+#include <cstddef>
+#include <cstring>
 
 namespace latency_lab {
 
 MarketDataGenerator::MarketDataGenerator(std::uint64_t num_messages, const char* symbol)
     : num_messages_(num_messages), seed_(12345ULL), next_order_id_(1000), sequence_number_(1) {
     std::memset(symbol_, ' ', sizeof(symbol_));
-    std::strncpy(symbol_, symbol, std::min(size_t(7), std::strlen(symbol)));
+    const auto symbol_length = std::min<std::size_t>(sizeof(symbol_), std::strlen(symbol));
+    std::memcpy(symbol_, symbol, symbol_length);
 }
 
 void MarketDataGenerator::generate() {
@@ -19,11 +21,11 @@ void MarketDataGenerator::generate() {
         msg.order_id = next_order_id_ + (i % 10000);
         std::memcpy(msg.symbol, symbol_, 8);
 
-        msg.price = 10000 + (next_random() % 19000);
-        msg.quantity = 100 + (next_random() % 10000);
-        msg.side = (next_random() % 2) == 0 ? Side::Buy : Side::Sell;
+        msg.price = 10000 + static_cast<std::int64_t>(random_bounded(19000));
+        msg.quantity = 100 + static_cast<std::uint32_t>(random_bounded(10000));
+        msg.side = random_bounded(2) == 0 ? Side::Buy : Side::Sell;
 
-        std::uint32_t type_rand = next_random() % 100;
+        std::uint32_t type_rand = static_cast<std::uint32_t>(random_bounded(100));
         if (type_rand < 70) {
             msg.type = MessageType::Add;
         } else if (type_rand < 85) {
