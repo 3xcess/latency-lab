@@ -6,7 +6,7 @@ Built in C++20.
 
 ## Architecture Overview
 
-### Phase 1 (Current): Single-Thread Baseline
+### Phase 1: Single-Thread Baseline
 
 ```
 Market Data Generator
@@ -80,6 +80,7 @@ cmake --build . -j $(nproc)
 
 After successful build, you'll find:
 - `benchmark_single_thread` - Single-threaded benchmark binary
+- `benchmark_producer_consumer` - Producer-consumer benchmark binary
 - `test_order_book` - Unit tests for order book correctness
 
 ## Running Benchmarks
@@ -95,6 +96,23 @@ Measures per-message latency through the order book in a single thread.
 # Run with custom message count
 ./benchmark_single_thread 10000000
 ```
+
+### Producer-Consumer Pipeline
+
+Runs one producer thread that publishes messages into a bounded mutex queue and one consumer thread that updates the order book.
+
+```bash
+# Run with default 1M messages and 65,536 queue slots
+./benchmark_producer_consumer
+
+# Run with custom message count and queue capacity
+./benchmark_producer_consumer 1000000 65536
+
+# On Linux, optionally pin producer to CPU 2 and consumer to CPU 3
+./benchmark_producer_consumer 1000000 65536 2 3
+```
+
+Producer-consumer latency measures time from producer enqueue timestamp to the end of order book processing. It includes queueing delay, wakeup cost, and consumer processing.
 
 **Example Output:**
 
@@ -205,10 +223,10 @@ No exceptions in the hot path; silent ignore for invalid operations (ADD).
 ## Roadmap
 
 ### Phase 2: Producer-Consumer Pipeline
-- [ ] Mutex-based queue implementation
-- [ ] Producer and consumer threads
-- [ ] Basic CPU affinity helpers
-- [ ] Latency comparison: single-thread vs pipeline
+- [x] Mutex-based queue implementation
+- [x] Producer and consumer threads
+- [x] Basic CPU affinity helpers
+- [x] Latency comparison: single-thread vs pipeline
 
 ### Phase 3: Lock-Free Patterns
 - [ ] SPSC (Single-Producer Single-Consumer) bounded ring buffer
@@ -242,13 +260,17 @@ latency-lab/
 │   ├── market_message.hpp      # Message struct and enums
 │   ├── generator.hpp           # Message generator
 │   ├── order_book.hpp          # Order book interface
-│   └── metrics.hpp             # Latency recorder
+│   ├── metrics.hpp             # Latency recorder
+│   ├── mutex_queue.hpp         # Bounded mutex queue
+│   └── thread_utils.hpp        # CPU affinity helpers
 ├── src/
 │   ├── generator.cpp           # Generator implementation
 │   ├── order_book.cpp          # Order book implementation
-│   └── metrics.cpp             # Metrics implementation
+│   ├── metrics.cpp             # Metrics implementation
+│   └── thread_utils.cpp        # Thread utility implementation
 ├── apps/
-│   └── benchmark_single_thread.cpp  # Single-thread benchmark
+│   ├── benchmark_single_thread.cpp       # Single-thread benchmark
+│   └── benchmark_producer_consumer.cpp   # Producer-consumer benchmark
 ├── tests/
 │   └── test_order_book.cpp     # Order book unit tests
 ├── docs/
@@ -309,6 +331,6 @@ This project is provided as-is for educational purposes.
 
 ---
 
-**Last Updated:** Phase 1 Complete
+**Last Updated:** Phase 2 Complete
 
-**Status:** Ready for Phase 2 (Producer-Consumer Pipeline)
+**Status:** Ready for Phase 3
