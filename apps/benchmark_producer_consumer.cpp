@@ -15,6 +15,12 @@
 
 namespace {
 
+struct MarketMessageEnvelope {
+    latency_lab::MarketMessage message;
+    std::uint64_t producer_timestamp_ns = 0;
+    std::uint64_t queue_push_timestamp_ns = 0;
+};
+
 std::uint64_t parse_u64_arg(char* value, std::uint64_t fallback) {
     if (value == nullptr) {
         return fallback;
@@ -50,9 +56,11 @@ int main(int argc, char* argv[]) {
     MarketDataGenerator generator(num_messages, "AAPL");
     generator.generate();
 
-    BoundedMutexQueue<MarketMessage> queue(queue_capacity);
+    BoundedMutexQueue<MarketMessageEnvelope> queue(queue_capacity);
     OrderBook book;
-    LatencyRecorder latency_recorder;
+    LatencyRecorder pipeline_latency_recorder;
+    LatencyRecorder queue_wait_recorder;
+    LatencyRecorder book_processing_recorder;
 
     std::atomic<std::uint64_t> produced{0};
     std::atomic<std::uint64_t> consumed{0};
@@ -69,8 +77,13 @@ int main(int argc, char* argv[]) {
 
         int last_cpu = get_current_cpu();
         for (auto message : generator.messages()) {
-            message.exchange_timestamp_ns = get_timestamp_ns();
-            queue.push(message);
+            MarketMessageEnvelope envelope;
+            envelope.message = message;
+            envelope.producer_timestamp_ns = get_timestamp_ns();
+
+            queue.push_with_mutation(envelope, [](MarketMessageEnvelope& queued_envelope) {
+                queued_envelope.queue_push_timestamp_ns = get_timestamp_ns();
+            });
             produced.fetch_add(1, std::memory_order_relaxed);
 
             const int current_cpu = get_current_cpu();
@@ -89,11 +102,20 @@ int main(int argc, char* argv[]) {
         }
 
         int last_cpu = get_current_cpu();
-        MarketMessage message{};
-        while (queue.pop(message)) {
-            book.on_message(message);
+        MarketMessageEnvelope envelope{};
+        while (queue.pop(envelope)) {
+            const auto pop_timestamp_ns = get_timestamp_ns();
+            queue_wait_recorder.record(pop_timestamp_ns - envelope.queue_push_timestamp_ns);
+
+            const auto book_start = steady_clock::now();
+            book.on_message(envelope.message);
+            const auto book_end = steady_clock::now();
+
+            const auto book_latency_ns = duration_cast<nanoseconds>(book_end - book_start).count();
+            book_processing_recorder.record(static_cast<std::uint64_t>(book_latency_ns));
+
             const auto end_timestamp_ns = get_timestamp_ns();
-            latency_recorder.record(end_timestamp_ns - message.exchange_timestamp_ns);
+            pipeline_latency_recorder.record(end_timestamp_ns - envelope.producer_timestamp_ns);
             consumed.fetch_add(1, std::memory_order_relaxed);
 
             const int current_cpu = get_current_cpu();
@@ -119,7 +141,18 @@ int main(int argc, char* argv[]) {
     std::cout << "Throughput: " << (throughput_msg_per_sec / 1e6) << " M msg/sec\n";
     std::cout << "Producer CPU Migrations: " << producer_migrations.load(std::memory_order_relaxed) << "\n";
     std::cout << "Consumer CPU Migrations: " << consumer_migrations.load(std::memory_order_relaxed) << "\n";
-    latency_recorder.print_summary();
+
+    std::cout << "\n=== Pipeline Latency ===\n";
+    std::cout << "producer timestamp -> consumer finished processing\n";
+    pipeline_latency_recorder.print_summary();
+
+    std::cout << "\n=== Queue Wait / Residence Time ===\n";
+    std::cout << "producer push timestamp -> consumer pop timestamp\n";
+    queue_wait_recorder.print_summary();
+
+    std::cout << "\n=== Book Processing Latency ===\n";
+    std::cout << "before OrderBook::on_message() -> after OrderBook::on_message()\n";
+    book_processing_recorder.print_summary();
 
     std::cout << "=== Final Order Book State ===\n";
     std::cout << "Total Orders in Book: " << book.total_orders() << "\n";
