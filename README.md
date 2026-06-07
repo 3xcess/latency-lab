@@ -4,6 +4,13 @@ A real world market and low latency trading systems simulation.
 
 Built in C++20.
 
+---
+
+**Last Updated:** Phase 2 Complete
+
+**Status:** Ready for Phase 3
+
+
 ## Architecture Overview
 
 ### Phase 1: Single-Thread Baseline
@@ -365,9 +372,3 @@ Solution: Pin producer and consumer to dedicated cores.
 ## License
 
 This project is provided as-is for educational purposes.
-
----
-
-**Last Updated:** Phase 2 Complete
-
-**Status:** Ready for Phase 3
