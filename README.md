@@ -37,9 +37,42 @@ Market Data Generator
    - Records per-message latencies in nanoseconds
    - Computes percentiles: min, p50, p90, p99, p99.9, max
 
-### Future Phases (Phase 2+)
+### Phase 2: Producer-consumer pipeline:
 
-- **Producer-consumer pipeline** with thread pinning
+Adds a second benchmark path that separates market data publishing from order book processing.
+
+```
+Market Data Generator
+        |
+        v
+Producer Thread
+        |
+        v
+Bounded Mutex Queue
+        |
+        v
+Consumer Thread
+        |
+        v
+Order Book Engine
+        |
+        v
+Latency Recorder
+```
+
+**Additions:**
+
+1. **BoundedMutexQueue** 
+   - Mutex based queue implementation
+   - Applies backpressure when the queue reaches capacity 
+
+2. **Thread Pinning** 
+   - ThreadUtils files to introduce thread pinning to the project
+   - Separates market data publishing from order book processing
+   - Pins producer and consumer workers to different threads
+
+### Future Phases (Phase 3+)
+
 - **Lock-free SPSC ring buffer** queue implementation
 - **False sharing** experiments with and without cache-line padding
 - **Memory pool / arena allocator** experiments
