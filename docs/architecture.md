@@ -285,9 +285,58 @@ Files: `include/latency_lab/thread_utils.hpp`, `src/thread_utils.cpp`
 
 The producer-consumer benchmark records latency from producer enqueue timestamp to completion of order book processing in the consumer. This intentionally includes queueing delay and scheduler wakeup overhead, unlike the single-thread benchmark, which isolates the order book processing path.
 
-## Future Optimizations (Phase 3+)
+## Phase 3: SPSC Queue, False Sharing, and Batching
 
-- Lock-Free Queue
+Phase 3 adds focused experiments for common low-latency engineering tradeoffs.
+
+### SPSC Ring Buffer Pipeline
+
+```
+Market Data Generator
+        |
+        v
+Producer Thread
+        |
+        v
+SPSC Ring Buffer
+        |
+        v
+Consumer Thread
+        |
+        v
+Order Book Engine
+        |
+        v
+Latency Recorder
+```
+
+**SpscRingBuffer**
+
+File: `include/latency_lab/spsc_ring_buffer.hpp`
+
+- Uses one producer and one consumer
+- Preallocates bounded storage during construction
+- Keeps producer-owned and consumer-owned indices on separate cache lines
+- Returns `false` on full or empty states so the benchmark controls spin/yield policy
+
+### False Sharing
+
+File: `apps/benchmark_false_sharing.cpp`
+
+- Runs two threads incrementing independent atomic counters
+- Compares adjacent counters against cache-line padded counters
+- Reports throughput and CPU migration counts
+
+### Batching
+
+File: `apps/benchmark_batching.cpp`
+
+- Runs the order book with batch sizes 1, 8, 32, and 64
+- Reports throughput and amortized per-message batch processing latency
+- Demonstrates that batching can improve throughput while changing latency semantics
+
+## Future Optimizations (Phase 4+)
+
 - Object Pool
 - Segment Tree
 - SIMD Processing
@@ -295,4 +344,4 @@ The producer-consumer benchmark records latency from producer enqueue timestamp 
 
 ---
 
-**Status:** Phase 2 complete
+**Status:** Phase 3 complete
