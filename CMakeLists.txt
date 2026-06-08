@@ -29,6 +29,7 @@ set(CORE_SOURCES
     src/order_book.cpp
     src/pooled_order_book.cpp
     src/metrics.cpp
+    src/socket_utils.cpp
     src/thread_utils.cpp
 )
 
@@ -64,6 +65,24 @@ target_include_directories(benchmark_batching PRIVATE ${CMAKE_SOURCE_DIR}/includ
 add_executable(benchmark_memory_pool apps/benchmark_memory_pool.cpp)
 target_link_libraries(benchmark_memory_pool PRIVATE latency_lab_core)
 target_include_directories(benchmark_memory_pool PRIVATE ${CMAKE_SOURCE_DIR}/include)
+
+add_executable(benchmark_branch_prediction apps/benchmark_branch_prediction.cpp)
+target_link_libraries(benchmark_branch_prediction PRIVATE latency_lab_core)
+target_include_directories(benchmark_branch_prediction PRIVATE ${CMAKE_SOURCE_DIR}/include)
+
+add_executable(benchmark_prefetch apps/benchmark_prefetch.cpp)
+target_link_libraries(benchmark_prefetch PRIVATE latency_lab_core)
+target_include_directories(benchmark_prefetch PRIVATE ${CMAKE_SOURCE_DIR}/include)
+
+if(UNIX AND NOT APPLE)
+    add_executable(benchmark_tcp_feed apps/benchmark_tcp_feed.cpp)
+    target_link_libraries(benchmark_tcp_feed PRIVATE latency_lab_core Threads::Threads)
+    target_include_directories(benchmark_tcp_feed PRIVATE ${CMAKE_SOURCE_DIR}/include)
+
+    add_executable(benchmark_udp_feed apps/benchmark_udp_feed.cpp)
+    target_link_libraries(benchmark_udp_feed PRIVATE latency_lab_core Threads::Threads)
+    target_include_directories(benchmark_udp_feed PRIVATE ${CMAKE_SOURCE_DIR}/include)
+endif()
 
 add_executable(test_order_book tests/test_order_book.cpp)
 target_link_libraries(test_order_book PRIVATE latency_lab_core)
