@@ -34,7 +34,7 @@ int parse_int_arg(char* value, int fallback) {
     return std::stoi(value);
 }
 
-}  // namespace
+}
 
 int main(int argc, char* argv[]) {
     using namespace latency_lab;

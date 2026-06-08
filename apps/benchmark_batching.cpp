@@ -22,7 +22,7 @@ std::vector<std::size_t> default_batch_sizes() {
     return {1, 8, 32, 64};
 }
 
-}  // namespace
+}
 
 int main(int argc, char* argv[]) {
     using namespace latency_lab;

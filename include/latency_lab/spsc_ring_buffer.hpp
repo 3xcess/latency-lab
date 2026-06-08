@@ -66,4 +66,4 @@ private:
     PaddedIndex tail_;
 };
 
-}  // namespace latency_lab
+}

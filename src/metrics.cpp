@@ -108,4 +108,4 @@ void LatencyRecorder::print_summary() const {
     std::cout << "========================\n\n";
 }
 
-} // namespace latency_lab
+}

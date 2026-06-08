@@ -6,8 +6,6 @@
 #include <chrono>
 #include <cstdlib>
 
-// Single-threaded benchmark: measure order book processing latency.
-// Decision: Single-threaded to isolate order book performance from concurrency overhead.
 int main(int argc, char* argv[]) {
     using namespace latency_lab;
     using namespace std::chrono;
@@ -43,7 +41,6 @@ int main(int argc, char* argv[]) {
     // process all messages and record per message latency.
     auto benchmark_start = steady_clock::now();
     for (const auto& msg : messages) {
-        // time to process a single message.
         auto msg_start = steady_clock::now();
         book.on_message(msg);
         auto msg_end = steady_clock::now();

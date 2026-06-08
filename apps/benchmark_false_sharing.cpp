@@ -120,7 +120,7 @@ void run_case(
     std::cout << "Second CPU Migrations: " << second_migrations.load(std::memory_order_relaxed) << "\n";
 }
 
-}  // namespace
+}
 
 int main(int argc, char* argv[]) {
     const std::uint64_t iterations = argc > 1 ? parse_u64_arg(argv[1], 100'000'000) : 100'000'000;
