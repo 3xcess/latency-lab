@@ -195,6 +195,35 @@ void test_multiple_orders_same_price() {
     std::cout << "PASS\n";
 }
 
+void test_duplicate_add_is_ignored() {
+    std::cout << "Test: duplicate_add_is_ignored... ";
+    OrderBook book;
+
+    MarketMessage first{};
+    first.order_id = 1;
+    first.price = 10000;
+    first.quantity = 100;
+    first.side = Side::Buy;
+    first.type = MessageType::Add;
+    book.on_message(first);
+
+    MarketMessage duplicate{};
+    duplicate.order_id = 1;
+    duplicate.price = 10100;
+    duplicate.quantity = 50;
+    duplicate.side = Side::Buy;
+    duplicate.type = MessageType::Add;
+    book.on_message(duplicate);
+
+    auto best_bid = book.best_bid();
+    assert(best_bid.has_value());
+    assert(best_bid->price == 10000);
+    assert(best_bid->total_quantity == 100);
+    assert(book.total_orders() == 1);
+    assert(book.buy_side_levels() == 1);
+    std::cout << "PASS\n";
+}
+
 }
 
 int main() {
@@ -209,6 +238,7 @@ int main() {
         test_trade_partial_fill();
         test_trade_full_fill();
         test_multiple_orders_same_price();
+        test_duplicate_add_is_ignored();
 
         std::cout << "\nAll tests passed!\n";
         return 0;

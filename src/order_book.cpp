@@ -25,6 +25,10 @@ void OrderBook::on_message(const MarketMessage& msg) {
 }
 
 void OrderBook::handle_add(const MarketMessage& msg) {
+    if (order_map_.find(msg.order_id) != order_map_.end()) {
+        return;
+    }
+
     Order order{
         .order_id = msg.order_id,
         .price = msg.price,
