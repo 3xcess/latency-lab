@@ -242,7 +242,7 @@ Result: **~1 cache miss per message** instead of multiple misses if data were fr
 
 ## Phase 2: Producer-Consumer Pipeline
 
-Phase 2 adds a second benchmark path that separates market data publishing from order book processing.
+A second benchmark path that separates market data publishing from order book processing.
 
 ```
 Market Data Generator
@@ -287,7 +287,7 @@ The producer-consumer benchmark records latency from producer enqueue timestamp 
 
 ## Phase 3: SPSC Queue, False Sharing, and Batching
 
-Phase 3 adds focused experiments for common low-latency engineering tradeoffs.
+Benchmarks for common low-latency engineering tradeoffs.
 
 ### SPSC Ring Buffer Pipeline
 
@@ -333,11 +333,10 @@ File: `apps/benchmark_batching.cpp`
 
 - Runs the order book with batch sizes 1, 8, 32, and 64
 - Reports throughput and amortized per-message batch processing latency
-- Demonstrates that batching can improve throughput while changing latency semantics
 
 ## Phase 4: Memory Pool and Allocation Experiment
 
-Phase 4 introduces a second order book implementation that keeps `Order` objects in a fixed-capacity pool.
+Alt order book implementation that keeps `Order` objects in a fixed-capacity pool.
 
 ```
 Market Data Generator
@@ -383,12 +382,99 @@ File: `apps/benchmark_memory_pool.cpp`
 - Reports throughput and full latency percentiles for both
 - Prints pool allocations, deallocations, available slots, and exhaustions
 
-## Future Optimizations (Phase 5+)
+## Phase 5: TCP and UDP Feed Handlers
+
+Went from in-process queues to Linux loopback sockets while keeping the same fixed-size `MarketMessage` payload.
+
+### TCP Feed
+
+```
+Market Data Generator
+        |
+        v
+Producer Thread
+        |
+        v
+TCP Socket
+        |
+        v
+Consumer Thread
+        |
+        v
+Order Book Engine
+        |
+        v
+Latency Recorder
+```
+
+File: `apps/benchmark_tcp_feed.cpp`
+
+- Sends binary `MarketMessage` records over a loopback TCP connection
+- Uses exact receive loops because TCP is a byte stream, not a message protocol
+- Supports `TCP_NODELAY`, `SO_SNDBUF`, `SO_RCVBUF`, and CPU pinning arguments
+- Reports network-to-book latency and book processing latency separately
+
+### UDP Feed
+
+```
+Market Data Generator
+        |
+        v
+Producer Thread
+        |
+        v
+UDP Datagram Socket
+        |
+        v
+Consumer Thread
+        |
+        v
+Order Book Engine
+        |
+        v
+Latency Recorder + Drop Count
+```
+
+File: `apps/benchmark_udp_feed.cpp`
+
+- Sends one `MarketMessage` per UDP datagram
+- Reports produced, consumed, and dropped/unreceived message counts
+- Supports `SO_SNDBUF`, `SO_RCVBUF`, receive timeout, and CPU pinning arguments
+
+**Socket utilities**
+
+Files: `include/latency_lab/socket_utils.hpp`, `src/socket_utils.cpp`
+
+- Centralizes socket tuning helpers
+- Keeps socket close and bound-port discovery in one place
+
+## Phase 6: Advanced CPU Behavior Experiments
+
+Standalone experiments
+
+### Branch Prediction
+
+File: `apps/benchmark_branch_prediction.cpp`
+
+- Generates predictable and unpredictable message-type distributions
+- Compares dispatch code with and without `[[likely]]` / `[[unlikely]]`
+- Reports throughput and per-iteration latency
+
+### Prefetching
+
+File: `apps/benchmark_prefetch.cpp`
+
+- Scans generated `MarketMessage` data with prefetch distances 0, 4, 16, and 64
+- Uses `__builtin_prefetch` on GCC and Clang
+- Reports checksum-stabilized throughput and per-iteration latency
+
+## Stuff to try
 
 - Segment Tree
 - SIMD Processing
-- NUMA Awareness
+- Epoll and non-blocking network loops
+- Busy polling where supported
+- Perf integration and flame graph scripts
 
 ---
 
-**Status:** Phase 4 complete

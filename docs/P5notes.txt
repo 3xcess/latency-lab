@@ -1,0 +1,132 @@
+-> What: Added Networked feed helpers
+
+====================================================
+====================================================
+=== TCP Feed Order Book Benchmark ===
+Messages: 1000000
+TCP_NODELAY: on
+SO_SNDBUF: 0
+SO_RCVBUF: 0
+Producer CPU: -1
+Consumer CPU: -1
+
+=== Benchmark Results ===
+Produced: 1000000
+Consumed: 1000000
+Total Time: 0.434038 seconds
+Throughput: 2.30395 M msg/sec
+Producer CPU Migrations: 0
+Consumer CPU Migrations: 0
+
+=== Network To Book Latency ===
+producer send timestamp -> before OrderBook::on_message()
+
+=== Latency Statistics ===
+Samples: 1000000
+Min:     1.80 us
+P50:     36.04 ms
+P90:     40.80 ms
+P99:     44.08 ms
+P99.9:   45.26 ms
+Max:     45.36 ms
+Mean:    32.71 ms
+========================
+
+
+=== Book Processing Latency ===
+before OrderBook::on_message() -> after OrderBook::on_message()
+
+=== Latency Statistics ===
+Samples: 1000000
+Min:     21 ns
+P50:     44 ns
+P90:     319 ns
+P99:     679 ns
+P99.9:   1.65 us
+Max:     241.96 us
+Mean:    139 ns
+========================
+
+=== Final Order Book State ===
+Total Orders in Book: 8516
+Buy Side Levels: 3776
+Sell Side Levels: 3858
+Best Bid: 28997 x 4635
+Best Ask: 10003 x 10051
+====================================================
+==========================
+====================================================
+=== UDP Feed Order Book Benchmark ===
+Messages: 1000000
+SO_SNDBUF: 0
+SO_RCVBUF: 0
+Producer CPU: -1
+Consumer CPU: -1
+Receive Timeout: 1000 ms
+
+=== Benchmark Results ===
+Produced: 1000000
+Consumed: 979700
+Dropped/Unreceived: 20300
+Total Time: 1.91255 seconds
+Throughput: 0.512249 M msg/sec
+Producer CPU Migrations: 0
+Consumer CPU Migrations: 0
+
+=== Network To Book Latency ===
+producer send timestamp -> before OrderBook::on_message()
+
+=== Latency Statistics ===
+Samples: 979700
+Min:     760 ns
+P50:     3.45 us
+P90:     66.88 us
+P99:     242.81 us
+P99.9:   738.90 us
+Max:     3.53 ms
+Mean:    23.08 us
+========================
+
+
+=== Book Processing Latency ===
+before OrderBook::on_message() -> after OrderBook::on_message()
+
+=== Latency Statistics ===
+Samples: 979700
+Min:     20 ns
+P50:     112 ns
+P90:     496 ns
+P99:     1.14 us
+P99.9:   2.90 us
+Max:     216.56 us
+Mean:    210 ns
+========================
+
+=== Final Order Book State ===
+Total Orders in Book: 8518
+Buy Side Levels: 3800
+Sell Side Levels: 3844
+Best Bid: 28996 x 9550
+Best Ask: 10003 x 10051
+====================================================
+====================================================
+
+>> TCP delivered all messages and preserved final book state 
+|__>> Accumulated high network-to-book latency under an unpaced sender due to buffering/backlog.
+
+>> UDP delivered much lower latency for received messages
+|__>> Dropped roughly 2% of messages, causing final order-book state divergence.
+
+| Feed |  Produced |  Consumed |  Loss |   Throughput | Network p50 | Network p99 | Book p50 | Final book       |
+| ---- | --------- | --------- | ----- | ------------ | ----------- | ----------- | -------- | ---------------- |
+| TCP  | 1,000,000 | 1,000,000 |    0% | 2.30 M msg/s |    36.04 ms |    44.08 ms |    44 ns | Matches baseline |
+| UDP  | 1,000,000 |   979,700 | 2.03% | 0.51 M msg/s |     3.45 us |   242.81 us |   112 ns | Diverged         |
+
+>> Real market system need a lot of other stuff to make UDP work to use its low latency.
+>> Stuff found online for this: 
+|__>> sequence numbers
+|__>> gap detection (might try soon)
+|__>> snapshots
+|__>> replay/recovery channels
+|__>> multicast loss recovery
+|__>> feed arbitration

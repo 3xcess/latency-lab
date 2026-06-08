@@ -4,12 +4,6 @@ A real world market and low latency trading systems simulation.
 
 Built in C++20.
 
----
-
-**Last Updated:** Phase 4 Complete
-
-**Status:** Ready for Phase 5
-
 
 ## Architecture Overview
 
@@ -17,11 +11,14 @@ Built in C++20.
 
 ```
 Market Data Generator
-         ↓
+         ||
+         \/
     [Message Stream]
-         ↓
+         ||
+         \/
     Order Book Engine
-         ↓
+         ||
+         \/
     Metrics Collector
 ```
 
@@ -50,20 +47,20 @@ Adds a second benchmark path that separates market data publishing from order bo
 
 ```
 Market Data Generator
-        |
-        v
+        ||
+        \/
 Producer Thread
-        |
-        v
+        ||
+        \/
 Bounded Mutex Queue
-        |
-        v
+        ||
+        \/
 Consumer Thread
-        |
-        v
+        ||
+        \/
 Order Book Engine
-        |
-        v
+        ||
+        \/
 Latency Recorder
 ```
 
@@ -121,10 +118,49 @@ Adds an order book variant backed by a preallocated object pool for `Order` stor
    - Compares baseline `OrderBook` against `PooledOrderBook`
    - Reports throughput, tail latency, pool counters, and final book state
 
-### Future Phases (Phase 5+)
+### Phase 5: TCP and UDP feed handlers
 
-- **TCP/UDP feed handlers** with socket tuning
-- **Branch prediction** and prefetch experiments
+Adds loopback networking benchmarks that send fixed-size `MarketMessage` packets through Linux sockets.
+
+**Additions:**
+
+1. **Socket utilities**
+   - Helpers for `TCP_NODELAY`, socket buffer sizes, nonblocking mode, and exact TCP send/receive
+   - Linux implementation with portable stubs for unsupported platforms
+
+2. **TCP feed benchmark**
+   - Producer sends binary `MarketMessage` records over a loopback TCP connection
+   - Consumer receives complete messages and applies them to `OrderBook`
+   - Supports `TCP_NODELAY`, send/receive buffer sizes, and CPU pinning
+
+3. **UDP feed benchmark**
+   - Producer sends one `MarketMessage` per UDP datagram
+   - Consumer reports received count and dropped/unreceived datagrams
+   - Supports socket buffer sizes, receive timeout, and CPU pinning
+
+### Phase 6: Fun stuff
+
+**Additions:**
+
+1. **Branch prediction benchmark**
+   - Compares predictable and unpredictable message-type distributions
+   - Runs dispatch with and without `[[likely]]` / `[[unlikely]]`
+   - Demonstrates that branch hints can help or hurt depending on distribution and compiler output
+
+2. **Prefetch benchmark**
+   - Compares sequential message scans with prefetch distances 0, 4, 16, and 64
+   - Uses `__builtin_prefetch` on GCC/Clang
+   - Shows when software prefetch can improve or degrade throughput
+
+### Future Experiments
+tbd when I'll get to them...
+
+- Flat/vector price-level order book
+- NUMA-aware allocation and thread placement
+- Maybe try to implement gap detection (for UDP and stuff)
+
+### P.S. 
+All results and notes regarding different phases in the docs folder are local development machine measurements and should be treated as comparative evidence of my personal runs, not universal hardware claims.
 
 ## Build Instructions
 
@@ -157,7 +193,6 @@ cmake --build . -j $(nproc)
 
 ### Build Output
 
-After successful build, you'll find:
 - `benchmark_single_thread` - Single-threaded benchmark binary
 - `benchmark_producer_consumer` - Producer-consumer benchmark binary
 - `benchmark_spsc_queue` - SPSC ring buffer producer-consumer benchmark binary
@@ -165,6 +200,10 @@ After successful build, you'll find:
 - `benchmark_false_sharing` - Cache-line false sharing benchmark binary
 - `benchmark_batching` - Batch-size comparison benchmark binary
 - `benchmark_memory_pool` - Baseline vs pooled order book benchmark binary
+- `benchmark_tcp_feed` - TCP loopback feed benchmark binary on Linux
+- `benchmark_udp_feed` - UDP loopback feed benchmark binary on Linux
+- `benchmark_branch_prediction` - Branch distribution and hint benchmark binary
+- `benchmark_prefetch` - Software prefetch distance benchmark binary
 - `test_order_book` - Unit tests for order book correctness
 - `test_pooled_order_book` - Unit tests for pooled order book correctness
 
@@ -196,8 +235,6 @@ Runs one producer thread that publishes messages into a bounded mutex queue and 
 # On Linux, optionally pin producer to CPU 2 and consumer to CPU 3
 ./benchmark_producer_consumer 1000000 65536 2 3
 ```
-
-Producer-consumer latency measures time from producer enqueue timestamp to the end of order book processing. It includes queueing delay, wakeup cost, and consumer processing.
 
 ### SPSC Ring Buffer Pipeline
 
@@ -262,6 +299,54 @@ Compares the baseline order book against a pooled order book that preallocates o
 ./benchmark_memory_pool 1000000 1000000
 ```
 
+### TCP Feed
+
+Runs a loopback TCP feed where the producer writes binary `MarketMessage` records and the consumer applies them to the order book.
+
+```bash
+# Run with default 1M messages, TCP_NODELAY enabled, default socket buffers
+./benchmark_tcp_feed
+
+# Run with custom messages, TCP_NODELAY, send buffer, receive buffer, and CPU pins
+./benchmark_tcp_feed 1000000 1 1048576 1048576 2 3
+```
+
+### UDP Feed
+
+Runs a loopback UDP feed with one `MarketMessage` per datagram. UDP can drop messages, so the report includes dropped/unreceived count.
+
+```bash
+# Run with default 1M messages and default socket buffers
+./benchmark_udp_feed
+
+# Run with custom messages, send buffer, receive buffer, CPU pins, and receive timeout ms
+./benchmark_udp_feed 1000000 1048576 1048576 2 3 1000
+```
+
+### Branch Prediction
+
+Compares predictable and unpredictable message dispatch with and without branch hints.
+
+```bash
+# Run with default 5M messages
+./benchmark_branch_prediction
+
+# Run with custom message count
+./benchmark_branch_prediction 5000000
+```
+
+### Prefetch
+
+Compares message scanning with prefetch distances 0, 4, 16, and 64.
+
+```bash
+# Run with default 5M messages
+./benchmark_prefetch
+
+# Run with custom message count
+./benchmark_prefetch 5000000
+```
+
 **Example Output:**
 
 ```
@@ -272,36 +357,36 @@ Warm-up complete.
 
 === Benchmark Results ===
 Total Messages: 1000000
-Total Time: 0.42 seconds
-Throughput: 2.38 M msg/sec
+Total Time: 0.118879 seconds
+Throughput: 8.4119 M msg/sec
 
 === Latency Statistics ===
 Samples: 1000000
-Min:     62 ns
-P50:     112 ns
-P90:     156 ns
-P99:     412 ns
-P99.9:   1.2 us
-Max:     145 us
-Mean:    118 ns
+Min:     19 ns
+P50:     40 ns
+P90:     224 ns
+P99:     324 ns
+P99.9:   713 ns
+Max:     213.62 us
+Mean:    96 ns
 ========================
 
 === Final Order Book State ===
-Total Orders in Book: 3847
-Buy Side Levels: 98
-Sell Side Levels: 97
-Best Bid: 15421 x 23456
-Best Ask: 15422 x 18921
+Total Orders in Book: 8516
+Buy Side Levels: 3776
+Sell Side Levels: 3858
+Best Bid: 28997 x 4635
+Best Ask: 10003 x 10051
+
 ```
 
 ### Running Tests
 
 ```bash
-# Run all tests
-ctest --verbose
 
-# Or run the test binary directly
+ctest --verbose
 ./test_order_book
+
 ```
 
 **Example Output:**
@@ -388,23 +473,22 @@ No exceptions in the hot path; silent ignore for invalid operations (ADD).
 - [x] Compare allocator behavior on latency
 
 ### Phase 5: Network Feed Handler
-- [ ] TCP feed parser
-- [ ] UDP feed parser
-- [ ] Socket tuning: TCP_NODELAY, buffer sizes
+- [x] TCP feed benchmark
+- [x] UDP feed benchmark
+- [x] Socket tuning: TCP_NODELAY and buffer sizes
 - [ ] Epoll and async I/O patterns
 
-### Phase 6: Advanced Topics
-- [ ] Branch prediction and [[likely]] / [[unlikely]]
-- [ ] Prefetch experiments with `__builtin_prefetch`
-- [ ] NUMA awareness (multi-socket systems)
+### Phase 6: Fun stuff
+- [x] Branch prediction and [[likely]] / [[unlikely]]
+- [x] Prefetch experiments with `__builtin_prefetch`
 - [ ] Perf integration and flame graph generation
 
 ## Project Structure
 
 ```
 latency-lab/
-├── CMakeLists.txt              # Build configuration
-├── README.md                   # This file
+├── CMakeLists.txt              # Build config
+├── README.md                   
 ├── include/latency_lab/
 │   ├── market_message.hpp      # Message struct and enums
 │   ├── generator.hpp           # Message generator
@@ -417,9 +501,9 @@ latency-lab/
 │   ├── order_book.cpp          # Order book implementation
 │   ├── metrics.cpp             # Metrics implementation
 │   └── thread_utils.cpp        # Thread utility implementation
-├── apps/
-│   ├── benchmark_single_thread.cpp       # Single-thread benchmark
-│   └── benchmark_producer_consumer.cpp   # Producer-consumer benchmark
+|
+├── apps/                       # Benchmarks
+|
 ├── tests/
 │   └── test_order_book.cpp     # Order book unit tests
 ├── docs/
@@ -427,57 +511,6 @@ latency-lab/
 │   └── performance_notes.md    # Performance concepts
 └── scripts/
 ```
-
-Phase 3 additions:
-- `include/latency_lab/spsc_ring_buffer.hpp`
-- `apps/benchmark_spsc_queue.cpp`
-- `apps/benchmark_false_sharing.cpp`
-- `apps/benchmark_batching.cpp`
-
-Phase 4 additions:
-- `include/latency_lab/object_pool.hpp`
-- `include/latency_lab/pooled_order_book.hpp`
-- `src/pooled_order_book.cpp`
-- `apps/benchmark_memory_pool.cpp`
-- `apps/benchmark_spsc_queue_pooled.cpp`
-- `tests/test_pooled_order_book.cpp`
-
-## Performance Notes
-
-### Why Tail Latency Matters
-
-The worst-case latency determines profitability:
-- A 100 µs delay on average is good
-- A 10 ms spike (p99.9) can miss the market move
-- Algorithms often fail not on average cases, but on tail events
-
-### Why Allocations Matter
-
-Dynamic allocations in the hot path can cause:
-- Cache misses (no locality)
-- Lock contention (global allocator)
-- Garbage collector stalls (in other languages)
-- Unpredictable latency (virtual memory paging)
-
-Solution: Pre-allocate or use object pools.
-
-### Why False Sharing Matters
-
-Two threads accessing different data on the same cache line:
-- Core 1 modifies byte 0 → cache line invalidated everywhere
-- Core 2 misses on byte 64 (same line, not accessed) → stall
-
-Solution: Align data to cache lines; pad structures to avoid hot-spots.
-
-### Why CPU Pinning Helps
-
-Without pinning:
-- OS scheduler moves threads between cores
-- L3 cache is not reused (warm cache lost)
-- Memory topology (NUMA) is ignored
-- Tail latencies spike during scheduling decisions
-
-Solution: Pin producer and consumer to dedicated cores.
 
 ## Building on Windows vs. Linux
 
