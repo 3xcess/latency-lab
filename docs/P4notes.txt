@@ -1,0 +1,444 @@
+>>> BUG FIX <<<
+Found out with pooled order book testing that OrderBook abd POoled order book were not consistent
+>> One of them had correctness issue
+|__>> Issue was a duplicate add processing issue in normal order book
+|__>> emplace() rejected duplicate order IDs, but the code still updated price-level aggregates.
+|__>> Reran all benchmarks to see if any results changed
+
+>> Correctness check:
+Total Orders in Book: 8516
+Buy Side Levels: 3776
+Sell Side Levels: 3858
+Best Bid: 28997 x 4635
+Best Ask: 10003 x 10051
+
+xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+
+-> What: Replaced allocation-heavy order storage with a preallocated object pool 
+
+====================================================
+====================================================
+=== Single-Thread Order Book Benchmark ===
+Generating 1000000 messages...
+Generated 1000000 messages.
+Warm-up complete.
+
+=== Benchmark Results ===
+Total Messages: 1000000
+Total Time: 0.118879 seconds
+Throughput: 8.4119 M msg/sec
+
+=== Latency Statistics ===
+Samples: 1000000
+Min:     19 ns
+P50:     40 ns
+P90:     224 ns
+P99:     324 ns
+P99.9:   713 ns
+Max:     213.62 us
+Mean:    96 ns
+========================
+
+=== Final Order Book State ===
+Total Orders in Book: 8516
+Buy Side Levels: 3776
+Sell Side Levels: 3858
+Best Bid: 28997 x 4635
+Best Ask: 10003 x 10051
+====================================================
+==========================
+====================================================
+=== Producer-Consumer Order Book Benchmark ===
+Messages: 1000000
+Queue Capacity: 65536
+Producer CPU: -1
+Consumer CPU: -1
+
+=== Benchmark Results ===
+Produced: 1000000
+Consumed: 1000000
+Total Time: 0.75674 seconds
+Throughput: 1.32146 M msg/sec
+Producer CPU Migrations: 0
+Consumer CPU Migrations: 0
+
+=== Pipeline Latency ===
+producer timestamp -> consumer finished processing
+
+=== Latency Statistics ===
+Samples: 1000000
+Min:     186.47 us
+P50:     48.25 ms
+P90:     58.02 ms
+P99:     74.50 ms
+P99.9:   76.18 ms
+Max:     76.21 ms
+Mean:    48.24 ms
+========================
+
+
+=== Queue Wait / Residence Time ===
+producer push timestamp -> consumer pop timestamp
+
+=== Latency Statistics ===
+Samples: 1000000
+Min:     186.00 us
+P50:     48.25 ms
+P90:     58.02 ms
+P99:     74.49 ms
+P99.9:   76.18 ms
+Max:     76.21 ms
+Mean:    48.24 ms
+========================
+
+
+=== Book Processing Latency ===
+
+=== Latency Statistics ===
+Samples: 1000000
+Min:     20 ns
+P50:     47 ns
+P90:     365 ns
+P99:     623 ns
+P99.9:   1.26 us
+Max:     204.27 us
+Mean:    145 ns
+========================
+
+=== Final Order Book State ===
+Total Orders in Book: 8516
+Buy Side Levels: 3776
+Sell Side Levels: 3858
+Best Bid: 28997 x 4635
+Best Ask: 10003 x 10051
+====================================================
+==========================
+====================================================
+=== Batching Order Book Benchmark ===
+Messages: 1000000
+Latency metric: amortized batch processing time per message
+
+=== Batch Size 1 ===
+Total Time: 0.12242 seconds
+Throughput: 8.16861 M msg/sec
+
+=== Latency Statistics ===
+Samples: 1000000
+Min:     22 ns
+P50:     42 ns
+P90:     226 ns
+P99:     315 ns
+P99.9:   569 ns
+Max:     194.18 us
+Mean:    96 ns
+========================
+
+Total Orders in Book: 8516
+Buy Side Levels: 3776
+Sell Side Levels: 3858
+
+=== Batch Size 8 ===
+Total Time: 0.0832233 seconds
+Throughput: 12.0159 M msg/sec
+
+=== Latency Statistics ===
+Samples: 1000000
+Min:     6 ns
+P50:     69 ns
+P90:     115 ns
+P99:     175 ns
+P99.9:   624 ns
+Max:     36.83 us
+Mean:    75 ns
+========================
+
+Total Orders in Book: 8516
+Buy Side Levels: 3776
+Sell Side Levels: 3858
+
+=== Batch Size 32 ===
+Total Time: 0.0761643 seconds
+Throughput: 13.1295 M msg/sec
+
+=== Latency Statistics ===
+Samples: 1000000
+Min:     13 ns
+P50:     66 ns
+P90:     89 ns
+P99:     149 ns
+P99.9:   551 ns
+Max:     7.71 us
+Mean:    70 ns
+========================
+
+Total Orders in Book: 8516
+Buy Side Levels: 3776
+Sell Side Levels: 3858
+
+=== Batch Size 64 ===
+Total Time: 0.0777625 seconds
+Throughput: 12.8597 M msg/sec
+
+=== Latency Statistics ===
+Samples: 1000000
+Min:     32 ns
+P50:     66 ns
+P90:     84 ns
+P99:     178 ns
+P99.9:   1.08 us
+Max:     4.37 us
+Mean:    72 ns
+========================
+
+Total Orders in Book: 8516
+Buy Side Levels: 3776
+Sell Side Levels: 3858
+====================================================
+==========================
+====================================================
+=== False Sharing Benchmark ===
+Iterations per thread: 100000000
+First CPU: -1
+Second CPU: -1
+
+=== Unpadded Counters ===
+Iterations per thread: 100000000
+Total Time: 1.95881 seconds
+Throughput: 102.103 M increments/sec
+First Counter: 100000000
+Second Counter: 100000000
+First CPU Migrations: 0
+Second CPU Migrations: 1
+
+=== Cache-Line Padded Counters ===
+Iterations per thread: 100000000
+Total Time: 0.491845 seconds
+Throughput: 406.632 M increments/sec
+First Counter: 100000000
+Second Counter: 100000000
+First CPU Migrations: 0
+Second CPU Migrations: 0
+====================================================
+==========================
+====================================================
+=== SPSC Ring Buffer Order Book Benchmark ===
+Messages: 1000000
+Queue Capacity: 65536
+Producer CPU: -1
+Consumer CPU: -1
+
+=== Benchmark Results ===
+Produced: 1000000
+Consumed: 1000000
+Total Time: 0.233658 seconds
+Throughput: 4.27977 M msg/sec
+Producer Spins: 580803
+Consumer Spins: 2
+Producer CPU Migrations: 0
+Consumer CPU Migrations: 0
+
+=== Pipeline Latency ===
+producer timestamp -> consumer finished processing
+
+=== Latency Statistics ===
+Samples: 1000000
+Min:     21.28 us
+P50:     14.35 ms
+P90:     18.22 ms
+P99:     19.93 ms
+P99.9:   20.70 ms
+Max:     20.71 ms
+Mean:    14.71 ms
+========================
+
+
+=== Queue Wait / Residence Time ===
+producer push timestamp -> consumer pop timestamp
+
+=== Latency Statistics ===
+Samples: 1000000
+Min:     1.33 us
+P50:     14.35 ms
+P90:     18.22 ms
+P99:     19.93 ms
+P99.9:   20.70 ms
+Max:     20.71 ms
+Mean:    14.71 ms
+========================
+
+
+=== Book Processing Latency ===
+
+=== Latency Statistics ===
+Samples: 1000000
+Min:     21 ns
+P50:     43 ns
+P90:     247 ns
+P99:     407 ns
+P99.9:   954 ns
+Max:     407.84 us
+Mean:    107 ns
+========================
+
+=== Final Order Book State ===
+Total Orders in Book: 8516
+Buy Side Levels: 3776
+Sell Side Levels: 3858
+Best Bid: 28997 x 4635
+Best Ask: 10003 x 10051
+====================================================
+==========================
+====================================================
+=== SPSC Ring Buffer Pooled Order Book Benchmark ===
+Messages: 1000000
+Queue Capacity: 65536
+Pool Capacity: 1000000
+Producer CPU: -1
+Consumer CPU: -1
+
+=== Benchmark Results ===
+Produced: 1000000
+Consumed: 1000000
+Total Time: 0.236249 seconds
+Throughput: 4.23283 M msg/sec
+Producer Spins: 596347
+Consumer Spins: 0
+Producer CPU Migrations: 0
+Consumer CPU Migrations: 0
+Pool Allocations: 113679
+Pool Deallocations: 105163
+Pool Available: 991484
+Pool Exhaustions: 0
+
+=== Pipeline Latency ===
+producer timestamp -> consumer finished processing
+
+=== Latency Statistics ===
+Samples: 1000000
+Min:     43.54 us
+P50:     14.74 ms
+P90:     19.89 ms
+P99:     21.63 ms
+P99.9:   21.69 ms
+Max:     21.72 ms
+Mean:    14.91 ms
+========================
+
+
+=== Queue Wait / Residence Time ===
+producer push timestamp -> consumer pop timestamp
+
+=== Latency Statistics ===
+Samples: 1000000
+Min:     20.79 us
+P50:     14.74 ms
+P90:     19.89 ms
+P99:     21.63 ms
+P99.9:   21.69 ms
+Max:     21.72 ms
+Mean:    14.91 ms
+========================
+
+
+=== Book Processing Latency ===
+=== Latency Statistics ===
+Samples: 1000000
+Min:     21 ns
+P50:     41 ns
+P90:     252 ns
+P99:     402 ns
+P99.9:   949 ns
+Max:     217.77 us
+Mean:    106 ns
+========================
+
+=== Final Order Book State ===
+Total Orders in Book: 8516
+Buy Side Levels: 3776
+Sell Side Levels: 3858
+Best Bid: 28997 x 4635
+Best Ask: 10003 x 10051
+====================================================
+==========================
+====================================================
+=== Memory Pool Order Book Benchmark ===
+Messages: 1000000
+Pool Capacity: 1000000
+
+=== OrderBook Baseline ===
+Messages: 1000000
+Total Time: 0.129458 seconds
+Throughput: 7.7245 M msg/sec
+
+=== Latency Statistics ===
+Samples: 1000000
+Min:     19 ns
+P50:     41 ns
+P90:     246 ns
+P99:     404 ns
+P99.9:   844 ns
+Max:     146.68 us
+Mean:    105 ns
+========================
+
+Total Orders in Book: 8516
+Buy Side Levels: 3776
+Sell Side Levels: 3858
+Best Bid: 28997 x 4635
+Best Ask: 10003 x 10051
+
+=== PooledOrderBook ===
+Messages: 1000000
+Total Time: 0.124204 seconds
+Throughput: 8.05128 M msg/sec
+
+=== Latency Statistics ===
+Samples: 1000000
+Min:     20 ns
+P50:     40 ns
+P90:     235 ns
+P99:     341 ns
+P99.9:   685 ns
+Max:     151.96 us
+Mean:    100 ns
+========================
+
+Pool Allocations: 113679
+Pool Deallocations: 105163
+Pool Available: 991484
+Pool Exhaustions: 0
+Total Orders in Book: 8516
+Buy Side Levels: 3776
+Sell Side Levels: 3858
+Best Bid: 28997 x 4635
+Best Ask: 10003 x 10051
+====================================================
+====================================================
+>> The pooled implementation provides modest throughput improvement and better tail latency
+
+>> In the SPSC pipeline, baseline and pooled books perform similarly after the duplicate-ADD fix. 
+|__>> The pipeline remains dominated by queue wait time, not book processing latency.
+
+>> Batching is way stronger
+| Batch size |        Throughput |   P50 |        P99 |      P99.9 |
+| ---------: | ----------------: | ----: | ---------: | ---------: |
+|          1 |      8.17 M msg/s | 42 ns |     315 ns |     569 ns |
+|          8 |     12.02 M msg/s | 69 ns |     175 ns |     624 ns |
+|         32 |    13.13 M msg/s  | 66 ns |    149 ns  |     551 ns |
+|         64 |     12.86 M msg/s | 66 ns |     178 ns |    1.08 us |
+
+>> This benchmark reports amortized batch processing time per message, not full live-message latency including batch formation wait.
+
+>> Replacing the bounded mutex queue with an SPSC ring buffer improved producer-consumer throughput ~3.2x
+|__>> Reduced p50 pipeline latency by ~70% under the same unpaced workload.
+
+
+>> Fixed Results
+| Experiment                            |      Baseline |     Optimized | Result               |
+| ------------------------------------- | ------------: | ------------: | -------------------- |
+| Mutex queue → SPSC queue              |  1.32 M msg/s |  4.28 M msg/s | **~3.2x throughput** |
+| Mutex queue → SPSC queue p50 pipeline |      48.25 ms |      14.35 ms | **~70% lower**       |
+| False sharing unpadded → padded       | 102.1 M inc/s | 406.6 M inc/s | **~4.0x throughput** |
+| Batch size 1 → 32                     |  8.17 M msg/s | 13.13 M msg/s | **~61% throughput**  |
+| Baseline book → pooled book           |  7.72 M msg/s |  8.05 M msg/s | **~4% throughput**   |
+| Baseline book p99 → pooled book p99   |        404 ns |        341 ns | **~16% lower p99**   |
