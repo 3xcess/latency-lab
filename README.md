@@ -6,9 +6,9 @@ Built in C++20.
 
 ---
 
-**Last Updated:** Phase 2 Complete
+**Last Updated:** Phase 3 Complete
 
-**Status:** Ready for Phase 3
+**Status:** Ready for Phase 4
 
 
 ## Architecture Overview
@@ -82,13 +82,29 @@ Latency Recorder
    - separates pipeline latency, queue residence time, and book processing latency
    - Results show that the additional latency comes primarily from queue residence time and thread handoff overhead
 
-### Future Phases (Phase 3+)
+### Phase 3: Lock-free queue, false sharing, and batching
 
-- **Lock-free SPSC ring buffer** queue implementation
-- **False sharing** experiments with and without cache-line padding
+Adds experiments for comparing synchronization costs, cache-line contention, and batch-size tradeoffs.
+
+**Additions:**
+
+1. **SpscRingBuffer**
+   - Bounded single-producer/single-consumer ring buffer
+   - Preallocated storage and padded head/tail indices
+   - Non-blocking `push`/`pop` API for explicit spin/yield policy
+
+2. **False sharing benchmark**
+   - Compares adjacent atomic counters against cache-line padded counters
+   - Demonstrates how independent data can still contend through cache coherence
+
+3. **Batching benchmark**
+   - Compares batch sizes 1, 8, 32, and 64
+   - Reports throughput and amortized per-message processing latency
+
+### Future Phases (Phase 4+)
+
 - **Memory pool / arena allocator** experiments
 - **TCP/UDP feed handlers** with socket tuning
-- **Batching** strategy comparisons
 - **Branch prediction** and prefetch experiments
 
 ## Build Instructions
@@ -125,6 +141,9 @@ cmake --build . -j $(nproc)
 After successful build, you'll find:
 - `benchmark_single_thread` - Single-threaded benchmark binary
 - `benchmark_producer_consumer` - Producer-consumer benchmark binary
+- `benchmark_spsc_queue` - SPSC ring buffer producer-consumer benchmark binary
+- `benchmark_false_sharing` - Cache-line false sharing benchmark binary
+- `benchmark_batching` - Batch-size comparison benchmark binary
 - `test_order_book` - Unit tests for order book correctness
 
 ## Running Benchmarks
@@ -157,6 +176,45 @@ Runs one producer thread that publishes messages into a bounded mutex queue and 
 ```
 
 Producer-consumer latency measures time from producer enqueue timestamp to the end of order book processing. It includes queueing delay, wakeup cost, and consumer processing.
+
+### SPSC Ring Buffer Pipeline
+
+Runs the same producer-consumer order book pipeline using a bounded SPSC ring buffer instead of a mutex queue.
+
+```bash
+# Run with default 1M messages and 65,536 queue slots
+./benchmark_spsc_queue
+
+# Run with custom message count and queue capacity
+./benchmark_spsc_queue 1000000 65536
+
+# On Linux, optionally pin producer to CPU 2 and consumer to CPU 3
+./benchmark_spsc_queue 1000000 65536 2 3
+```
+
+### False Sharing
+
+Compares two threads incrementing adjacent atomics versus cache-line padded atomics.
+
+```bash
+# Run with default 100M increments per thread
+./benchmark_false_sharing
+
+# Run with custom iterations and optional CPU pinning
+./benchmark_false_sharing 100000000 2 3
+```
+
+### Batching
+
+Compares order book processing in batch sizes 1, 8, 32, and 64.
+
+```bash
+# Run with default 1M messages
+./benchmark_batching
+
+# Run with custom message count
+./benchmark_batching 1000000
+```
 
 **Example Output:**
 
@@ -273,9 +331,10 @@ No exceptions in the hot path; silent ignore for invalid operations (ADD).
 - [x] Latency comparison: single-thread vs pipeline
 
 ### Phase 3: Lock-Free Patterns
-- [ ] SPSC (Single-Producer Single-Consumer) bounded ring buffer
-- [ ] Compare mutex queue vs lock-free queue
-- [ ] False-sharing experiment with padded vs unpadded structures
+- [x] SPSC (Single-Producer Single-Consumer) bounded ring buffer
+- [x] Compare mutex queue vs lock-free queue
+- [x] False-sharing experiment with padded vs unpadded structures
+- [x] Batching benchmark for batch sizes 1, 8, 32, and 64
 
 ### Phase 4: Memory Optimization
 - [ ] Object pool / arena allocator
@@ -322,6 +381,12 @@ latency-lab/
 │   └── performance_notes.md    # Performance concepts
 └── scripts/
 ```
+
+Phase 3 additions:
+- `include/latency_lab/spsc_ring_buffer.hpp`
+- `apps/benchmark_spsc_queue.cpp`
+- `apps/benchmark_false_sharing.cpp`
+- `apps/benchmark_batching.cpp`
 
 ## Performance Notes
 
