@@ -6,9 +6,9 @@ Built in C++20.
 
 ---
 
-**Last Updated:** Phase 3 Complete
+**Last Updated:** Phase 4 Complete
 
-**Status:** Ready for Phase 4
+**Status:** Ready for Phase 5
 
 
 ## Architecture Overview
@@ -101,9 +101,28 @@ Adds experiments for comparing synchronization costs, cache-line contention, and
    - Compares batch sizes 1, 8, 32, and 64
    - Reports throughput and amortized per-message processing latency
 
-### Future Phases (Phase 4+)
+### Phase 4: Memory pool and allocator experiment
 
-- **Memory pool / arena allocator** experiments
+Adds an order book variant backed by a preallocated object pool for `Order` storage.
+
+**Additions:**
+
+1. **ObjectPool**
+   - Fixed-capacity pool with placement-new construction
+   - Recycles freed slots without returning memory to the heap
+   - Tracks pool allocations, deallocations, available slots, and exhaustion events
+
+2. **PooledOrderBook**
+   - Uses `ObjectPool<Order>` for order storage
+   - Reserves the order lookup table up front
+   - Keeps the same public book interface as the baseline benchmark path
+
+3. **Memory pool benchmark**
+   - Compares baseline `OrderBook` against `PooledOrderBook`
+   - Reports throughput, tail latency, pool counters, and final book state
+
+### Future Phases (Phase 5+)
+
 - **TCP/UDP feed handlers** with socket tuning
 - **Branch prediction** and prefetch experiments
 
@@ -142,9 +161,12 @@ After successful build, you'll find:
 - `benchmark_single_thread` - Single-threaded benchmark binary
 - `benchmark_producer_consumer` - Producer-consumer benchmark binary
 - `benchmark_spsc_queue` - SPSC ring buffer producer-consumer benchmark binary
+- `benchmark_spsc_queue_pooled` - SPSC ring buffer benchmark using pooled order book binary
 - `benchmark_false_sharing` - Cache-line false sharing benchmark binary
 - `benchmark_batching` - Batch-size comparison benchmark binary
+- `benchmark_memory_pool` - Baseline vs pooled order book benchmark binary
 - `test_order_book` - Unit tests for order book correctness
+- `test_pooled_order_book` - Unit tests for pooled order book correctness
 
 ## Running Benchmarks
 
@@ -192,6 +214,18 @@ Runs the same producer-consumer order book pipeline using a bounded SPSC ring bu
 ./benchmark_spsc_queue 1000000 65536 2 3
 ```
 
+### SPSC Ring Buffer with Pooled Order Book
+
+Runs the SPSC pipeline with `PooledOrderBook` instead of the baseline order book.
+
+```bash
+# Run with default 1M messages, 65,536 queue slots, and pool capacity equal to message count
+./benchmark_spsc_queue_pooled
+
+# Run with custom message count, queue capacity, CPU pins, and pool capacity
+./benchmark_spsc_queue_pooled 1000000 65536 2 3 1000000
+```
+
 ### False Sharing
 
 Compares two threads incrementing adjacent atomics versus cache-line padded atomics.
@@ -214,6 +248,18 @@ Compares order book processing in batch sizes 1, 8, 32, and 64.
 
 # Run with custom message count
 ./benchmark_batching 1000000
+```
+
+### Memory Pool
+
+Compares the baseline order book against a pooled order book that preallocates order storage.
+
+```bash
+# Run with default 1M messages and pool capacity equal to message count
+./benchmark_memory_pool
+
+# Run with custom message count and pool capacity
+./benchmark_memory_pool 1000000 1000000
 ```
 
 **Example Output:**
@@ -337,9 +383,9 @@ No exceptions in the hot path; silent ignore for invalid operations (ADD).
 - [x] Batching benchmark for batch sizes 1, 8, 32, and 64
 
 ### Phase 4: Memory Optimization
-- [ ] Object pool / arena allocator
-- [ ] Pre-allocation experiments
-- [ ] Compare allocator behavior on latency
+- [x] Object pool for order storage
+- [x] Pre-allocation experiment with pooled order book
+- [x] Compare allocator behavior on latency
 
 ### Phase 5: Network Feed Handler
 - [ ] TCP feed parser
@@ -387,6 +433,14 @@ Phase 3 additions:
 - `apps/benchmark_spsc_queue.cpp`
 - `apps/benchmark_false_sharing.cpp`
 - `apps/benchmark_batching.cpp`
+
+Phase 4 additions:
+- `include/latency_lab/object_pool.hpp`
+- `include/latency_lab/pooled_order_book.hpp`
+- `src/pooled_order_book.cpp`
+- `apps/benchmark_memory_pool.cpp`
+- `apps/benchmark_spsc_queue_pooled.cpp`
+- `tests/test_pooled_order_book.cpp`
 
 ## Performance Notes
 
