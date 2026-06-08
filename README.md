@@ -436,7 +436,7 @@ Fixed 64-byte, cache-line-aligned POD struct with no dynamic allocation.
 **Why (MVP stage):**
 - **std::map**: Automatic sorting by price; best_bid/best_ask are O(1) to fetch
 - **std::unordered_map**: O(1) average lookup by order_id for modifications/cancels
-- **Performance**: Micro-level latency is dominated by lock free algorithm, not container choice
+- **Performance**: Standard containers provide a correctness-first baseline before comparing cache-aware and allocation-aware alternatives.
 
 **Future optimization:** Compare with:
 - Flat/vector-based price levels (better cache locality for skewed distributions)
