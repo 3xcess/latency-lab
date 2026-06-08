@@ -27,6 +27,7 @@ find_package(Threads REQUIRED)
 set(CORE_SOURCES
     src/generator.cpp
     src/order_book.cpp
+    src/pooled_order_book.cpp
     src/metrics.cpp
     src/thread_utils.cpp
 )
@@ -48,6 +49,10 @@ add_executable(benchmark_spsc_queue apps/benchmark_spsc_queue.cpp)
 target_link_libraries(benchmark_spsc_queue PRIVATE latency_lab_core Threads::Threads)
 target_include_directories(benchmark_spsc_queue PRIVATE ${CMAKE_SOURCE_DIR}/include)
 
+add_executable(benchmark_spsc_queue_pooled apps/benchmark_spsc_queue_pooled.cpp)
+target_link_libraries(benchmark_spsc_queue_pooled PRIVATE latency_lab_core Threads::Threads)
+target_include_directories(benchmark_spsc_queue_pooled PRIVATE ${CMAKE_SOURCE_DIR}/include)
+
 add_executable(benchmark_false_sharing apps/benchmark_false_sharing.cpp)
 target_link_libraries(benchmark_false_sharing PRIVATE latency_lab_core Threads::Threads)
 target_include_directories(benchmark_false_sharing PRIVATE ${CMAKE_SOURCE_DIR}/include)
@@ -56,12 +61,21 @@ add_executable(benchmark_batching apps/benchmark_batching.cpp)
 target_link_libraries(benchmark_batching PRIVATE latency_lab_core)
 target_include_directories(benchmark_batching PRIVATE ${CMAKE_SOURCE_DIR}/include)
 
+add_executable(benchmark_memory_pool apps/benchmark_memory_pool.cpp)
+target_link_libraries(benchmark_memory_pool PRIVATE latency_lab_core)
+target_include_directories(benchmark_memory_pool PRIVATE ${CMAKE_SOURCE_DIR}/include)
+
 add_executable(test_order_book tests/test_order_book.cpp)
 target_link_libraries(test_order_book PRIVATE latency_lab_core)
 target_include_directories(test_order_book PRIVATE ${CMAKE_SOURCE_DIR}/include)
 
+add_executable(test_pooled_order_book tests/test_pooled_order_book.cpp)
+target_link_libraries(test_pooled_order_book PRIVATE latency_lab_core)
+target_include_directories(test_pooled_order_book PRIVATE ${CMAKE_SOURCE_DIR}/include)
+
 enable_testing()
 add_test(NAME order_book_tests COMMAND test_order_book)
+add_test(NAME pooled_order_book_tests COMMAND test_pooled_order_book)
 
 message(STATUS "Build type: ${CMAKE_BUILD_TYPE}")
 message(STATUS "C++ standard: ${CMAKE_CXX_STANDARD}")
