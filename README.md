@@ -1,6 +1,18 @@
 # latency-lab
 
-A real world market and low latency trading systems simulation.
+A low latency trading systems simulation and performance engineering lab for market data ingestion, limit order book updates, and end-to-end latency benchmarking. 
+
+Compares:
+- single-threaded processing
+- mutex queues
+- SPSC ring buffers
+- cache-line padding
+- batching
+- memory pools
+- TCP/UDP feeds
+- branch prediction
+- prefetching
+to study how real systems bottlenecks affect throughput and tail latency.
 
 Built in C++20.
 
