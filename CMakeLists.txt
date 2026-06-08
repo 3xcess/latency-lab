@@ -44,6 +44,18 @@ add_executable(benchmark_producer_consumer apps/benchmark_producer_consumer.cpp)
 target_link_libraries(benchmark_producer_consumer PRIVATE latency_lab_core Threads::Threads)
 target_include_directories(benchmark_producer_consumer PRIVATE ${CMAKE_SOURCE_DIR}/include)
 
+add_executable(benchmark_spsc_queue apps/benchmark_spsc_queue.cpp)
+target_link_libraries(benchmark_spsc_queue PRIVATE latency_lab_core Threads::Threads)
+target_include_directories(benchmark_spsc_queue PRIVATE ${CMAKE_SOURCE_DIR}/include)
+
+add_executable(benchmark_false_sharing apps/benchmark_false_sharing.cpp)
+target_link_libraries(benchmark_false_sharing PRIVATE latency_lab_core Threads::Threads)
+target_include_directories(benchmark_false_sharing PRIVATE ${CMAKE_SOURCE_DIR}/include)
+
+add_executable(benchmark_batching apps/benchmark_batching.cpp)
+target_link_libraries(benchmark_batching PRIVATE latency_lab_core)
+target_include_directories(benchmark_batching PRIVATE ${CMAKE_SOURCE_DIR}/include)
+
 add_executable(test_order_book tests/test_order_book.cpp)
 target_link_libraries(test_order_book PRIVATE latency_lab_core)
 target_include_directories(test_order_book PRIVATE ${CMAKE_SOURCE_DIR}/include)
