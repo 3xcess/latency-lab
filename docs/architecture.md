@@ -335,13 +335,60 @@ File: `apps/benchmark_batching.cpp`
 - Reports throughput and amortized per-message batch processing latency
 - Demonstrates that batching can improve throughput while changing latency semantics
 
-## Future Optimizations (Phase 4+)
+## Phase 4: Memory Pool and Allocation Experiment
 
-- Object Pool
+Phase 4 introduces a second order book implementation that keeps `Order` objects in a fixed-capacity pool.
+
+```
+Market Data Generator
+        |
+        v
+Baseline OrderBook
+        |
+        v
+Latency Recorder
+
+Market Data Generator
+        |
+        v
+PooledOrderBook
+        |
+        v
+Latency Recorder + Pool Counters
+```
+
+**ObjectPool**
+
+File: `include/latency_lab/object_pool.hpp`
+
+- Allocates backing storage once during construction
+- Constructs objects in-place with placement new
+- Recycles freed slots through a free-list
+- Tracks allocation and deallocation counts for benchmark reporting
+
+**PooledOrderBook**
+
+Files: `include/latency_lab/pooled_order_book.hpp`, `src/pooled_order_book.cpp`
+
+- Uses `ObjectPool<Order>` for order lifetime management
+- Reserves the order lookup table during construction
+- Preserves the same message dispatcher and best bid/ask interface as `OrderBook`
+- Reports pool exhaustion if the configured capacity is too small
+
+**Memory pool benchmark**
+
+File: `apps/benchmark_memory_pool.cpp`
+
+- Runs the same message stream through baseline and pooled books
+- Reports throughput and full latency percentiles for both
+- Prints pool allocations, deallocations, available slots, and exhaustions
+
+## Future Optimizations (Phase 5+)
+
 - Segment Tree
 - SIMD Processing
 - NUMA Awareness
 
 ---
 
-**Status:** Phase 3 complete
+**Status:** Phase 4 complete
