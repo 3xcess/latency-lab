@@ -1,0 +1,313 @@
+-> What: Added spsc queue, batching, and false sharing
+
+====================================================
+====================================================
+=== Single-Thread Order Book Benchmark ===
+Generating 1000000 messages...
+Generated 1000000 messages.
+Warm-up complete.
+
+=== Benchmark Results ===
+Total Messages: 1000000
+Total Time: 0.291708 seconds
+Throughput: 3.42809 M msg/sec
+
+=== Latency Statistics ===
+Samples: 1000000
+Min:     20 ns
+P50:     229 ns
+P90:     394 ns
+P99:     769 ns
+P99.9:   1.98 us
+Max:     279.89 us
+Mean:    267 ns
+========================
+
+=== Final Order Book State ===
+Total Orders in Book: 8516
+Buy Side Levels: 19000
+Sell Side Levels: 19000
+Best Bid: 28999 x 84858
+Best Ask: 10000 x 58313
+====================================================
+==========================
+====================================================
+=== Producer-Consumer Order Book Benchmark ===
+Messages: 1000000
+Queue Capacity: 65536
+Producer CPU: -1
+Consumer CPU: -1
+
+=== Benchmark Results ===
+Produced: 1000000
+Consumed: 1000000
+Total Time: 1.24337 seconds
+Throughput: 0.804265 M msg/sec
+Producer CPU Migrations: 0
+Consumer CPU Migrations: 0
+
+=== Pipeline Latency ===
+producer timestamp -> consumer finished processing
+
+=== Latency Statistics ===
+Samples: 1000000
+Min:     354.08 us
+P50:     82.36 ms
+P90:     93.27 ms
+P99:     98.46 ms
+P99.9:   99.28 ms
+Max:     99.35 ms
+Mean:    79.67 ms
+========================
+
+
+=== Queue Wait / Residence Time ===
+producer push timestamp -> consumer pop timestamp
+
+=== Latency Statistics ===
+Samples: 1000000
+Min:     271.46 us
+P50:     82.36 ms
+P90:     93.27 ms
+P99:     98.46 ms
+P99.9:   99.28 ms
+Max:     99.35 ms
+Mean:    79.67 ms
+========================
+
+
+=== Book Processing Latency ===
+before OrderBook::on_message() -> after OrderBook::on_message()
+
+=== Latency Statistics ===
+Samples: 1000000
+Min:     20 ns
+P50:     390 ns
+P90:     668 ns
+P99:     1.19 us
+P99.9:   3.91 us
+Max:     354.15 us
+Mean:    437 ns
+========================
+
+=== Final Order Book State ===
+Total Orders in Book: 8516
+Buy Side Levels: 19000
+Sell Side Levels: 19000
+Best Bid: 28999 x 84858
+Best Ask: 10000 x 58313
+====================================================
+==========================
+====================================================
+=== SPSC Ring Buffer Order Book Benchmark ===
+Messages: 1000000
+Queue Capacity: 65536
+Producer CPU: -1
+Consumer CPU: -1
+
+=== Benchmark Results ===
+Produced: 1000000
+Consumed: 1000000
+Total Time: 0.47671 seconds
+Throughput: 2.09771 M msg/sec
+Producer Spins: 1731434
+Consumer Spins: 0
+Producer CPU Migrations: 0
+Consumer CPU Migrations: 0
+
+=== Pipeline Latency ===
+producer timestamp -> consumer finished processing
+
+=== Latency Statistics ===
+Samples: 1000000
+Min:     163.30 us
+P50:     31.04 ms
+P90:     35.07 ms
+P99:     38.63 ms
+P99.9:   38.82 ms
+Max:     38.93 ms
+Mean:    30.12 ms
+========================
+
+
+=== Queue Wait / Residence Time ===
+producer push timestamp -> consumer pop timestamp
+
+=== Latency Statistics ===
+Samples: 1000000
+Min:     140.29 us
+P50:     31.04 ms
+P90:     35.07 ms
+P99:     38.62 ms
+P99.9:   38.82 ms
+Max:     38.92 ms
+Mean:    30.12 ms
+========================
+
+
+=== Book Processing Latency ===
+before OrderBook::on_message() -> after OrderBook::on_message()
+
+=== Latency Statistics ===
+Samples: 1000000
+Min:     22 ns
+P50:     304 ns
+P90:     539 ns
+P99:     1.01 us
+P99.9:   3.02 us
+Max:     530.40 us
+Mean:    349 ns
+========================
+
+=== Final Order Book State ===
+Total Orders in Book: 8516
+Buy Side Levels: 19000
+Sell Side Levels: 19000
+Best Bid: 28999 x 84858
+Best Ask: 10000 x 58313
+====================================================
+==========================
+====================================================
+=== False Sharing Benchmark ===
+Iterations per thread: 100000000
+First CPU: -1
+Second CPU: -1
+
+=== Unpadded Counters ===
+Iterations per thread: 100000000
+Total Time: 2.13144 seconds
+Throughput: 93.8334 M increments/sec
+First Counter: 100000000
+Second Counter: 100000000
+First CPU Migrations: 0
+Second CPU Migrations: 0
+
+=== Cache-Line Padded Counters ===
+Iterations per thread: 100000000
+Total Time: 0.439833 seconds
+Throughput: 454.718 M increments/sec
+First Counter: 100000000
+Second Counter: 100000000
+First CPU Migrations: 0
+Second CPU Migrations: 0
+====================================================
+==========================
+====================================================
+=== Batching Order Book Benchmark ===
+Messages: 1000000
+Latency metric: amortized batch processing time per message
+
+=== Batch Size 1 ===
+Total Time: 0.294504 seconds
+Throughput: 3.39554 M msg/sec
+
+=== Latency Statistics ===
+Samples: 1000000
+Min:     22 ns
+P50:     230 ns
+P90:     384 ns
+P99:     733 ns
+P99.9:   1.88 us
+Max:     283.28 us
+Mean:    268 ns
+========================
+
+Total Orders in Book: 8516
+Buy Side Levels: 19000
+Sell Side Levels: 19000
+
+=== Batch Size 8 ===
+Total Time: 0.239445 seconds
+Throughput: 4.17633 M msg/sec
+
+=== Latency Statistics ===
+Samples: 1000000
+Min:     32 ns
+P50:     211 ns
+P90:     279 ns
+P99:     475 ns
+P99.9:   2.00 us
+Max:     46.49 us
+Mean:    231 ns
+========================
+
+Total Orders in Book: 8516
+Buy Side Levels: 19000
+Sell Side Levels: 19000
+
+=== Batch Size 32 ===
+Total Time: 0.231177 seconds
+Throughput: 4.32569 M msg/sec
+
+=== Latency Statistics ===
+Samples: 1000000
+Min:     79 ns
+P50:     205 ns
+P90:     273 ns
+P99:     459 ns
+P99.9:   1.60 us
+Max:     19.98 us
+Mean:    224 ns
+========================
+
+Total Orders in Book: 8516
+Buy Side Levels: 19000
+Sell Side Levels: 19000
+
+=== Batch Size 64 ===
+Total Time: 0.233823 seconds
+Throughput: 4.27674 M msg/sec
+
+=== Latency Statistics ===
+Samples: 1000000
+Min:     97 ns
+P50:     212 ns
+P90:     270 ns
+P99:     471 ns
+P99.9:   1.64 us
+Max:     4.96 us
+Mean:    228 ns
+========================
+
+Total Orders in Book: 8516
+Buy Side Levels: 19000
+Sell Side Levels: 19000
+====================================================
+====================================================
+
+>> SPSC improves the producer-consumer pipeline substantially over the mutex queue.
+>> False sharing has a massive measurable cost 
+>> Batching improves single-thread throughput by amortizing per-message overhead.
+
+>> SPSC improved the handoff mechanism
+|__>> Pipeline is still dominated by queue residence time under the unpaced producer workload.
+|__>> faster handoff helps but does not remove backlog under an unpaced producer.
+
+>> Producer spins show the producer frequently tried to push when the ring buffer was full. The consumer did not need to wait for data.
+|__>> Producer is faster than consumer/pipeline drain rate.
+|__>> Queue fills.
+|__>> Producer spins waiting for space.
+|__>> Consumer remains busy draining.
+
+>> Even when two threads update logically independent counters, they can interfere badly if the counters share the same cache line. 
+|__>> ~4.85x throughput improvement when counters were separated onto different cache lines. (false sharing benchmark)
+|__>> Cache line layout can dominate performance even when threads are not logically sharing the same variable.
+
+>> Batching improved amortized processing cost per message
+|__>> Benchmark does not yet measure batch formation delay.
+|__>> Batch size 32 was best for my setup.
+
+| Benchmark               |         Throughput |                             Key latency result | Main takeaway                                            |
+| ----------------------- | ------------------ | ---------------------------------------------- | -------------------------------------------------------- |
+| Single-thread baseline  |   **3.43 M msg/s** |            Book p50 **229 ns**, p99 **769 ns** | Fastest pure local update baseline                       |
+| Mutex producer-consumer |   **0.80 M msg/s** | Pipeline p50 **82.36 ms**, book p50 **390 ns** | Queue wait dominates                                     |
+| SPSC producer-consumer  |   **2.10 M msg/s** | Pipeline p50 **31.04 ms**, book p50 **304 ns** | Much better than mutex queue, still queue wait dominated |
+| False sharing unpadded  |  **93.83 M inc/s** |                                            N/A | Severe cache line contention                             |
+| False sharing padded    | **454.72 M inc/s** |                                            N/A | ~4.85x faster by avoiding false sharing                  |
+| Batching size 1         |   **3.40 M msg/s** |                 p50 **230 ns**, p99 **733 ns** | Baseline batch mode                                      |
+| Batching size 8         |   **4.18 M msg/s** |                 p50 **211 ns**, p99 **475 ns** | Strong improvement                                       |
+| Batching size 32        |   **4.33 M msg/s** |                 p50 **205 ns**, p99 **459 ns** | Best throughput here                                     |
+| Batching size 64        |   **4.28 M msg/s** |                 p50 **212 ns**, p99 **471 ns** | Slight regression vs 32                                  |
+
+
+->The book update path remains fast, but the mutex-based producer-consumer pipeline introduces significant queueing delay under an unpaced stress workload.
